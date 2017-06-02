@@ -71,7 +71,7 @@ def parse_fccid(appid=None, productid=None):
 		app_len = 5
 	else:
 		return None
-	
+
 	if len(appid) > app_len:
 		productid = appid[app_len:] + productid
 		appid = appid[:app_len]
@@ -79,35 +79,74 @@ def parse_fccid(appid=None, productid=None):
 
 # Parsesearch results page to find "Detail" link
 def parse_search_results(html):
-	soup = BeautifulSoup(html)
+	soup = BeautifulSoup(html, "html.parser")
 	#print(html.prettify())
-	
+
 	rs_tables = soup("table", id="rsTable")
 	if len(rs_tables) != 1:
 		raise Exception("Error, found %d results tables" % len(rs_tables))
-	
-	links = rs_tables[0].find_all("a", href=re.compile("/oetcf/eas/reports/ViewExhibitReport.cfm\?mode=Exhibits"))
-	print("Found %d results" % len(links))
+
+	#print("Found %d results" % len(links))
 	# if len(links) != 1:
 		# raise Exception("Error, found %d results rows" % len(links))
 
+
+
+
+
+	rows = rs_tables[0].find_all("tr") # get all of the rows in the table
+	return_value = []
+
+	for row in rows:
+		links = row.find_all("a", href=re.compile("/oetcf/eas/reports/ViewExhibitReport.cfm\?mode=Exhibits"))
+		links = [link['href'] for link in links]
+		if len(links) == 0:
+			continue
+
+		#print(links)
+    # Get the columns (all the column 2)
+		#print(row)
+		cols = row.find_all("td")
+		#print(cols)
+		lot = (links[0], cols[11].get_text().strip(), cols[14].get_text().strip(), cols[15].get_text().strip())
+		return_value.append(lot)
+
+	#	print(td.get_text().strip())
+		print(lot)
+	#print(soup.prettify())
+
 	print("Detail link found")
-	return [link['href'] for link in links]
+	return return_value
+
 
 # Request details page
 def get_attachment_urls(detail_url):
 	r = s.get(fcc_url + detail_url)
-	soup = BeautifulSoup(r.text)
-	
+	soup = BeautifulSoup(r.text, "html.parser")
+
 	rs_tables = soup("table", id="rsTable")
 	if len(rs_tables) != 1:
 		raise Exception("Error, found %d results tables" % len(rs_tables))
-	
+
 	a_tags = rs_tables[0].find_all("a", href=re.compile("/eas/GetApplicationAttachment.html"))
+	#links = [(tag.string, tag['href']) for tag in a_tags]
+	#a_tags = rs_tables[0].find_elements("a", href=re.compile("/eas/GetApplicationAttachment.html"))
 	links = [(tag.string, tag['href']) for tag in a_tags]
 
+	#rs_tables = self.driver.find_element(By.ID, 'data_configuration_feeds_ct_fields_body0')
+
+
+
+
+	#rows = rs_tables.find_elements(T24)
+	#columns =
 	print("Exhibit links found")
+	#return links
+	#print (links)
+	#print rows
+	#print("Exhibit links found")
 	return links
+
 
 # Fetch files and pack in to archive
 def fetch_and_pack(attachments, dirname, referer):
@@ -133,7 +172,9 @@ if __name__ == '__main__':
 		appid, productid = parse_fccid(fccid)
 		html_doc = lookup_fccid(appid, productid)
 		detail_urls = parse_search_results(html_doc)
-		for x, detail_url in enumerate(detail_urls, 1):
+
+		for x, row in enumerate(detail_urls, 1):
+			detail_url, ID, low, high = row
 			print("Fetching result %d" % x)
 			attachments = get_attachment_urls(detail_url)
 			dirname = "%s_%s/%d" % (appid, productid, x)
