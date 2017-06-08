@@ -51,7 +51,8 @@ def lookup_fccid(appid, productid):
 		"fetchfrom" : "0",
 		"calledFromFrame" : "Y",
 		"comments" : "",
-		"show_records" : "25",
+		"show_records" : "200",
+		#if soup.text = <input class="button-content" name = "next_value" value="show Next 25 Rows"
 		"grantee_code" : appid,
 		"product_code" : productid
 	}
@@ -81,43 +82,39 @@ def parse_fccid(appid=None, productid=None):
 def parse_search_results(html):
 	soup = BeautifulSoup(html, "html.parser")
 	#print(html.prettify())
-
 	rs_tables = soup("table", id="rsTable")
 	if len(rs_tables) != 1:
 		raise Exception("Error, found %d results tables" % len(rs_tables))
-
 	#print("Found %d results" % len(links))
 	# if len(links) != 1:
 		# raise Exception("Error, found %d results rows" % len(links))
-
-
-
-
-
 	rows = rs_tables[0].find_all("tr") # get all of the rows in the table
 	return_value = []
+	tupIDdict = {}
 
 	for row in rows:
 		links = row.find_all("a", href=re.compile("/oetcf/eas/reports/ViewExhibitReport.cfm\?mode=Exhibits"))
 		links = [link['href'] for link in links]
 		if len(links) == 0:
 			continue
-
-		#print(links)
-    # Get the columns (all the column 2)
-		#print(row)
 		cols = row.find_all("td")
-		#print(cols)
 		lot = (links[0], cols[11].get_text().strip(), cols[14].get_text().strip(), cols[15].get_text().strip())
 		return_value.append(lot)
-
-	#	print(td.get_text().strip())
+		FullfccID = lot[1]
+		if FullfccID not in tupIDdict:
+			tupIDdict[FullfccID] = []
+		tupIDdict[FullfccID].append(lot)
 		print(lot)
-	#print(soup.prettify())
 
+	for key in tupIDdict:
+		print("printing key here")
+		print(key)
+	#parse_fccid()
+	appid, productid = parse_fccid(FullfccID)
+	print(appid)
+	print(productid)
 	print("Detail link found")
-	return return_value
-
+	return tupIDdict
 
 # Request details page
 def get_attachment_urls(detail_url):
@@ -134,10 +131,6 @@ def get_attachment_urls(detail_url):
 	links = [(tag.string, tag['href']) for tag in a_tags]
 
 	#rs_tables = self.driver.find_element(By.ID, 'data_configuration_feeds_ct_fields_body0')
-
-
-
-
 	#rows = rs_tables.find_elements(T24)
 	#columns =
 	print("Exhibit links found")
@@ -157,9 +150,17 @@ def fetch_and_pack(attachments, dirname, referer):
 		extension = r.headers['content-type'].split('/')[-1]
 		filename = name + '.' + extension
 		print("Writing %s" % filename)
+		#print(lot[1] for lot in referer)
+		####change folder name here
+
 		with open(dirname + '/' + filename, 'wb') as handle:
 			for chunk in r.iter_content():
 				handle.write(chunk)
+
+	#temp_tuple = referer
+		#temp_tVar = temp_tuple[1]
+	#print(temp_tuple)
+
 
 if __name__ == '__main__':
 	# if len(sys.argv) in (2, 3):
@@ -171,12 +172,16 @@ if __name__ == '__main__':
 		print("Looking up FCC id: %s" % fccid)
 		appid, productid = parse_fccid(fccid)
 		html_doc = lookup_fccid(appid, productid)
-		detail_urls = parse_search_results(html_doc)
+		productData = parse_search_results(html_doc)
 
-		for x, row in enumerate(detail_urls, 1):
-			detail_url, ID, low, high = row
-			print("Fetching result %d" % x)
-			attachments = get_attachment_urls(detail_url)
-			dirname = "%s_%s/%d" % (appid, productid, x)
-			fetch_and_pack(attachments, dirname, detail_url)
-			print
+		for key, value in productData.items():
+			for x, row in enumerate(value, 1):
+				detail_url, ID, low, high = row
+				print("Fetching result %d" % x)
+				appid, productid = parse_fccid(ID)
+				print(appid, productid)
+
+				attachments = get_attachment_urls(detail_url)
+				dirname = "%s/%s/%d" % (appid, productid, x)
+				fetch_and_pack(attachments, dirname, detail_url)
+				#print
