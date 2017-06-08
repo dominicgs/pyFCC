@@ -3,12 +3,14 @@
 import sqlite3
 import xml.etree.ElementTree as ET
 import requests
+#from sys import argv
+import argparse
 
-def fetch_grantees():
-    r = requests.get('https://fcc.io/grantees')
-    print(dir(r))
-    print(r.headers['content-type'])
-    print(r.encoding)
+# saves all grantees from url to an xml file
+def fetch_grantees_xml():
+    r = requests.get('https://apps.fcc.gov/eas/GetEntityDownload.xml?type=G')
+    with open('grantees.xml', 'w') as f:
+        f.write(r.text)
 
 attributes = [
     'grantee_code',
@@ -42,7 +44,7 @@ def write_db(granteeTest):
     conn = sqlite3.connect('FCCgrantees.db')
     c = conn.cursor()
 
-    c.execute("""drop table if exists grantees""")
+    c.execute("""DROP TABLE IF EXISTS grantees""")
     conn.commit()
 
     c.execute('''CREATE TABLE grantees
@@ -60,14 +62,30 @@ def write_db(granteeTest):
     c.executemany('INSERT INTO grantees VALUES (?,?,?,?,?,?,?,?,?,?)', granteeTest)
     conn.commit()
 
-    for row in c:
-        print(row)
+    #for row in c:
+    #   print(row)
 
     c.close()
-    print("Table Created")
+    print("Table Created in FCCgrantees.db")
 
 
-if __name__ == "__main__":
-    grantees = parse_grantees()
+if __name__ == "__main__": 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-r", "--remote", help="Download grantee data from FCC website", action="store_true")
+    parser.add_argument("-l", "--local", help="Create grantee database from local file", action="store_true")
+    args = parser.parse_args()
+    #if argv[1] == '-r':
+    if args.remote:
+        print("Downloading grantee data...")
+        fetch_grantees_xml()
+    if args.local:
+        try:
+            grantees = parse_grantees()
+        except FileNotFoundError:
+            print("No local xml file found.")
+            print("Use argument --help for help")
+            print("Downloading...")
+            fetch_grantees_xml()
+            grantees = parse_grantees()
     write_db(grantees)
     
