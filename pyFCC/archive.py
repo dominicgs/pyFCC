@@ -102,7 +102,9 @@ def parse_search_results(html):
 		tupIDdict[FullfccID].append(lot)
 		print(lot)
 
-	appid, productid = parse_fccid(FullfccID)
+	# this line happens in main
+	#appid, productid = parse_fccid(FullfccID)
+	
 	print("Detail link found")
 	return tupIDdict
 
