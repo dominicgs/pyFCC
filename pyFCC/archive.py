@@ -106,21 +106,37 @@ def parse_search_results(html, tupIDdict):
 
 	# this line happens in main
 	#appid, productid = parse_fccid(FullfccID)
-	
-	print("Detail link found")
-	i = soup.find_all(href=re.compile('form action = "/oetcf/eas/reports/GenericSearchResult.cfm?RequestTimeout=500" method="post" name="next_result"'))
 
-	return tupIDdict, len(i)!=0
+	print("Detail link found")
+	i = soup.find_all("input", value = "Show Next 100 Rows")
+	#print(i)
+
+	#PrivErr = soup.find_all(href=re.compile('div class="red-content" align="center"'))
+
+	return tupIDdict, len(i)!=0#, len(PrivErr)!=0
+
+#def errorFunction(PrivErr):
+	#if(len(PrivErr)!=0):
+		#print("This information is private and cannot be viewed")
+	#else:
+		#print("Public info: function working")
 
 # Request details page
 def get_attachment_urls(detail_url):
 	r = s.get(fcc_url + detail_url)
 	soup = BeautifulSoup(r.text, "html.parser")
 
+
+	#PrivErr = soup.find_all(href=re.compile('There are no attachments for public review associated with this application'))
 	rs_tables = soup("table", id="rsTable")
+	#print(PrivErr)
+	if len(rs_tables) == 0:
+		print("No results available")
+		return []
 	if len(rs_tables) != 1:
-		#print(detail_url)
 		raise Exception("Error, found %d results tables" % len(rs_tables))
+	#else:
+		#print("")
 
 	a_tags = rs_tables[0].find_all("a", href=re.compile("/eas/GetApplicationAttachment.html"))
 	links = [(tag.string, tag['href']) for tag in a_tags]
@@ -150,12 +166,13 @@ def load_next(fccid):
 	html_doc = lookup_fccid(appid, productid)
 	#print(html_doc)
 	productData = {}
-	productData, more = parse_search_results(html_doc, productData)
+	productData, morePages = parse_search_results(html_doc, productData) #error after more
 	FromRec = 101
-	while more:
-		print("looping")
+	while morePages:
+		#print("looping")
 		html_doc = lookup_fccid(appid, productid, FromRec)
-		productData, more = parse_search_results(html_doc, productData)
+		productData, morePages = parse_search_results(html_doc, productData)
 		FromRec += 100
-	print("here")
+	#print("here")
+	print(len(productData))
 	return productData

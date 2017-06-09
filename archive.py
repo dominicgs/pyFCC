@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from pyFCC.archive import get_attachment_urls, parse_fccid, load_next, fetch_and_pack
+from pyFCC.archive import get_attachment_urls, parse_fccid, load_next, fetch_and_pack#, errorFunction
 from pyFCC.fccDB import create_product_table, populate_products
 import sys
 
