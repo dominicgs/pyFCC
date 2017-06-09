@@ -104,7 +104,9 @@ def parse_search_results(html, tupIDdict):
 		tupIDdict[FullfccID].append(lot)
 		print(lot)
 
-	appid, productid = parse_fccid(FullfccID)
+	# this line happens in main
+	#appid, productid = parse_fccid(FullfccID)
+	
 	print("Detail link found")
 	i = soup.find_all(href=re.compile('form action = "/oetcf/eas/reports/GenericSearchResult.cfm?RequestTimeout=500" method="post" name="next_result"'))
 

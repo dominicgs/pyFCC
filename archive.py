@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from pyFCC.archive import get_attachment_urls, parse_fccid, load_next, fetch_and_pack
+from pyFCC.fccDB import create_product_table, populate_products
 import sys
 
 if __name__ == '__main__':
@@ -27,3 +28,6 @@ if __name__ == '__main__':
 				attachments = get_attachment_urls(detail_url)
 				dirname = "%s/%s/%d" % (appid, productid, x)
 				fetch_and_pack(attachments, dirname, detail_url)
+
+	create_product_table()
+	populate_products(productData)
