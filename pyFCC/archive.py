@@ -5,13 +5,14 @@ import sys
 import os
 import re
 
+
 fcc_url = "https://apps.fcc.gov"
 product_search_url = "/oetcf/eas/reports/GenericSearchResult.cfm?RequestTimeout=500"
 
 s = requests.Session()
 
 # Perform FCC id search
-def lookup_fccid(appid, productid):
+def lookup_fccid(appid, productid, FromRec = 1):
 	payload = {
 		"application_status" : "",
 		"applicant_name" : "",
@@ -49,10 +50,11 @@ def lookup_fccid(appid, productid):
 		"fetchfrom" : "0",
 		"calledFromFrame" : "Y",
 		"comments" : "",
-		"show_records" : "200",
+		"show_records" : "100",
 		#if soup.text = <input class="button-content" name = "next_value" value="show Next 25 Rows"
 		"grantee_code" : appid,
-		"product_code" : productid
+		"product_code" : productid,
+		"FromRec" : FromRec
 	}
 	r = s.post(fcc_url + product_search_url, data=payload)
 	print("FCC id lookup complete")
@@ -77,7 +79,7 @@ def parse_fccid(appid=None, productid=None):
 	return (appid, productid)
 
 # Parsesearch results page to find "Detail" link
-def parse_search_results(html):
+def parse_search_results(html, tupIDdict):
 	soup = BeautifulSoup(html, "html.parser")
 	#print(html.prettify())
 	rs_tables = soup("table", id="rsTable")
@@ -86,7 +88,7 @@ def parse_search_results(html):
 	#print("Found %d results" % len(links))
 	rows = rs_tables[0].find_all("tr") # get all of the rows in the table
 	return_value = []
-	tupIDdict = {}
+	#tupIDdict = {}
 
 	for row in rows:
 		links = row.find_all("a", href=re.compile("/oetcf/eas/reports/ViewExhibitReport.cfm\?mode=Exhibits"))
@@ -104,18 +106,37 @@ def parse_search_results(html):
 
 	# this line happens in main
 	#appid, productid = parse_fccid(FullfccID)
-	
+
 	print("Detail link found")
-	return tupIDdict
+	i = soup.find_all("input", value = "Show Next 100 Rows")
+	#print(i)
+
+	#PrivErr = soup.find_all(href=re.compile('div class="red-content" align="center"'))
+
+	return tupIDdict, len(i)!=0#, len(PrivErr)!=0
+
+#def errorFunction(PrivErr):
+	#if(len(PrivErr)!=0):
+		#print("This information is private and cannot be viewed")
+	#else:
+		#print("Public info: function working")
 
 # Request details page
 def get_attachment_urls(detail_url):
 	r = s.get(fcc_url + detail_url)
 	soup = BeautifulSoup(r.text, "html.parser")
 
+
+	#PrivErr = soup.find_all(href=re.compile('There are no attachments for public review associated with this application'))
 	rs_tables = soup("table", id="rsTable")
+	#print(PrivErr)
+	if len(rs_tables) == 0:
+		print("No results available")
+		return []
 	if len(rs_tables) != 1:
 		raise Exception("Error, found %d results tables" % len(rs_tables))
+	#else:
+		#print("")
 
 	a_tags = rs_tables[0].find_all("a", href=re.compile("/eas/GetApplicationAttachment.html"))
 	links = [(tag.string, tag['href']) for tag in a_tags]
@@ -140,3 +161,18 @@ def fetch_and_pack(attachments, dirname, referer):
 			for chunk in r.iter_content():
 				handle.write(chunk)
 
+def load_next(fccid):
+	appid, productid = parse_fccid(fccid)
+	html_doc = lookup_fccid(appid, productid)
+	#print(html_doc)
+	productData = {}
+	productData, morePages = parse_search_results(html_doc, productData) #error after more
+	FromRec = 101
+	while morePages:
+		#print("looping")
+		html_doc = lookup_fccid(appid, productid, FromRec)
+		productData, morePages = parse_search_results(html_doc, productData)
+		FromRec += 100
+	#print("here")
+	print(len(productData))
+	return productData

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from pyFCC.archive import parse_fccid, lookup_fccid, parse_search_results, get_attachment_urls, fetch_and_pack
+from pyFCC.archive import get_attachment_urls, parse_fccid, load_next, fetch_and_pack#, errorFunction
 from pyFCC.fccDB import create_product_table, populate_products
 import sys
 
@@ -12,9 +12,11 @@ if __name__ == '__main__':
 		sys.exit(1)
 	for fccid in sys.argv[1:]:
 		print("Looking up FCC id: %s" % fccid)
-		appid, productid = parse_fccid(fccid)
-		html_doc = lookup_fccid(appid, productid)
-		productData = parse_search_results(html_doc)
+		###############call to function here
+		productData = load_next(fccid)
+		#appid, productid = parse_fccid(fccid)
+		#html_doc = lookup_fccid(appid, productid)
+		#productData = parse_search_results(html_doc)
 
 		for key, value in productData.items():
 			for x, row in enumerate(value, 1):
@@ -26,6 +28,6 @@ if __name__ == '__main__':
 				attachments = get_attachment_urls(detail_url)
 				dirname = "%s/%s/%d" % (appid, productid, x)
 				fetch_and_pack(attachments, dirname, detail_url)
-	
+
 	create_product_table()
 	populate_products(productData)
