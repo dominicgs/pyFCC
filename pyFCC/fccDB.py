@@ -54,7 +54,7 @@ def populate_products(product_test):
     product_list = []
     for key, value in product_test.items():
             for row in value:
-                dbValues = (row['grantee_code'], row['product_code'], row['url'], row['high_freq'], row['low_freq'], row['version'])
+                dbValues = (row['grantee_code'], row['product_code'], row['url'], row['low_freq'], row['high_freq'], row['version'])
                 product_list.append(dbValues)
 
     conn = sqlite3.connect('FCC.db')

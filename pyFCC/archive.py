@@ -56,7 +56,7 @@ def lookup_fcc_id(app_id, product_id, FromRec = 1):
 		"FromRec" : FromRec
 	}
 	r = s.post(fcc_url + product_search_url, data=payload)
-	print("FCC id lookup complete")
+	print("FCC ID lookup complete")
 	return r.text
 
 # format app_id and product_id correctly
@@ -84,7 +84,7 @@ def parse_search_results(html, tupIDdict):
 	if len(rs_tables) != 1:
 		raise Exception("Error, found %d results tables" % len(rs_tables))
 	
-	rows = rs_tables[0].find_all("tr") 		# get all of the rows in the table
+	rows = rs_tables[0].find_all("tr") 
 
 	for row in rows:
 		links = row.find_all("a", href=re.compile("/oetcf/eas/reports/ViewExhibitReport.cfm\?mode=Exhibits"))
@@ -94,8 +94,6 @@ def parse_search_results(html, tupIDdict):
 		cols = row.find_all("td")
 		ID = cols[11].get_text().strip()
 		grantee_code, product_code = parse_fcc_id(ID)
-		print("grantee_code:", grantee_code)
-		print("product_code:", product_code)
 		
 		#links[0] = url, cols[11] = full ID, cols[14] = low_freq, cols[15] = high_freq
 		product_info = {
