@@ -11,8 +11,8 @@ product_search_url = "/oetcf/eas/reports/GenericSearchResult.cfm?RequestTimeout=
 
 s = requests.Session()
 
-# Perform FCC id search
-def lookup_fccid(appid, productid, FromRec = 1):
+# Perform FCC ID search
+def lookup_fcc_id(app_id, product_id, FromRec = 1):
 	payload = {
 		"application_status" : "",
 		"applicant_name" : "",
@@ -51,44 +51,40 @@ def lookup_fccid(appid, productid, FromRec = 1):
 		"calledFromFrame" : "Y",
 		"comments" : "",
 		"show_records" : "100",
-		#if soup.text = <input class="button-content" name = "next_value" value="show Next 25 Rows"
-		"grantee_code" : appid,
-		"product_code" : productid,
+		"grantee_code" : app_id,
+		"product_code" : product_id,
 		"FromRec" : FromRec
 	}
 	r = s.post(fcc_url + product_search_url, data=payload)
-	print("FCC id lookup complete")
+	print("FCC ID lookup complete")
 	return r.text
 
-# Try to format appid and productid correctly
-def parse_fccid(appid=None, productid=None):
-	if appid is None:
+# format app_id and product_id correctly
+def parse_fcc_id(app_id=None, product_id=None):
+	if app_id is None:
 		return None
-	if productid is None:
-		productid = ''
-	if appid[0] in string.ascii_letters:
+	if product_id is None:
+		product_id = ''
+	if app_id[0] in string.ascii_letters:
 		app_len = 3
-	elif appid[0] in string.digits:
+	elif app_id[0] in string.digits:
 		app_len = 5
 	else:
 		return None
 
-	if len(appid) > app_len:
-		productid = appid[app_len:] + productid
-		appid = appid[:app_len]
-	return (appid, productid)
+	if len(app_id) > app_len:
+		product_id = app_id[app_len:] + product_id
+		app_id = app_id[:app_len]
+	return (app_id, product_id)
 
 # Parsesearch results page to find "Detail" link
 def parse_search_results(html, tupIDdict):
 	soup = BeautifulSoup(html, "html.parser")
-	#print(html.prettify())
 	rs_tables = soup("table", id="rsTable")
 	if len(rs_tables) != 1:
 		raise Exception("Error, found %d results tables" % len(rs_tables))
-	#print("Found %d results" % len(links))
-	rows = rs_tables[0].find_all("tr") # get all of the rows in the table
-	return_value = []
-	#tupIDdict = {}
+	
+	rows = rs_tables[0].find_all("tr") 
 
 	for row in rows:
 		links = row.find_all("a", href=re.compile("/oetcf/eas/reports/ViewExhibitReport.cfm\?mode=Exhibits"))
@@ -96,47 +92,40 @@ def parse_search_results(html, tupIDdict):
 		if len(links) == 0:
 			continue
 		cols = row.find_all("td")
-		lot = (links[0], cols[11].get_text().strip(), cols[14].get_text().strip(), cols[15].get_text().strip())
-		return_value.append(lot)
-		FullfccID = lot[1]
-		if FullfccID not in tupIDdict:
-			tupIDdict[FullfccID] = []
-		tupIDdict[FullfccID].append(lot)
-		print(lot)
+		ID = cols[11].get_text().strip()
+		grantee_code, product_code = parse_fcc_id(ID)
+		
+		#links[0] = url, cols[11] = full ID, cols[14] = low_freq, cols[15] = high_freq
+		product_info = {
+			'grantee_code': grantee_code,
+			'product_code': product_code,
+			'url': links[0],
+			'ID': cols[11].get_text().strip(),
+			'low_freq': cols[14].get_text().strip(),
+			'high_freq': cols[15].get_text().strip(),
+		}
 
-	# this line happens in main
-	#appid, productid = parse_fccid(FullfccID)
+		if ID not in tupIDdict:
+			tupIDdict[ID] = []
+		product_info['version'] = len(tupIDdict[ID]) + 1
+		tupIDdict[ID].append(product_info)
 
 	print("Detail link found")
 	i = soup.find_all("input", value = "Show Next 100 Rows")
-	#print(i)
 
-	#PrivErr = soup.find_all(href=re.compile('div class="red-content" align="center"'))
-
-	return tupIDdict, len(i)!=0#, len(PrivErr)!=0
-
-#def errorFunction(PrivErr):
-	#if(len(PrivErr)!=0):
-		#print("This information is private and cannot be viewed")
-	#else:
-		#print("Public info: function working")
+	return tupIDdict, len(i)!=0
 
 # Request details page
 def get_attachment_urls(detail_url):
 	r = s.get(fcc_url + detail_url)
 	soup = BeautifulSoup(r.text, "html.parser")
-
-
-	#PrivErr = soup.find_all(href=re.compile('There are no attachments for public review associated with this application'))
 	rs_tables = soup("table", id="rsTable")
-	#print(PrivErr)
+
 	if len(rs_tables) == 0:
 		print("No results available")
 		return []
 	if len(rs_tables) != 1:
 		raise Exception("Error, found %d results tables" % len(rs_tables))
-	#else:
-		#print("")
 
 	a_tags = rs_tables[0].find_all("a", href=re.compile("/eas/GetApplicationAttachment.html"))
 	links = [(tag.string, tag['href']) for tag in a_tags]
@@ -146,33 +135,30 @@ def get_attachment_urls(detail_url):
 
 
 # Fetch files and pack in to archive
-def fetch_and_pack(attachments, dirname, referer):
-	os.makedirs(dirname)
+def fetch_and_pack(attachments, dir_name, referer):
+	os.makedirs(dir_name)
 	for (name, url) in attachments:
 		print("Fetching %s" % name)
 		r = s.get(fcc_url + url, headers=dict(Referer=referer))
+
 		extension = r.headers['content-type'].split('/')[-1]
 		filename = name + '.' + extension
 		print("Writing %s" % filename)
-		#print(lot[1] for lot in referer)
-		####change folder name here
-
-		with open(dirname + '/' + filename, 'wb') as handle:
+		with open(dir_name + '/' + filename, 'wb') as handle:
 			for chunk in r.iter_content():
 				handle.write(chunk)
 
-def load_next(fccid):
-	appid, productid = parse_fccid(fccid)
-	html_doc = lookup_fccid(appid, productid)
-	#print(html_doc)
+def load_next(fcc_id):
+	app_id, product_id = parse_fcc_id(fcc_id)
+	html_doc = lookup_fcc_id(app_id, product_id)
 	productData = {}
-	productData, morePages = parse_search_results(html_doc, productData) #error after more
+	productData, morePages = parse_search_results(html_doc, productData)
 	FromRec = 101
 	while morePages:
-		#print("looping")
-		html_doc = lookup_fccid(appid, productid, FromRec)
+		html_doc = lookup_fcc_id(app_id, product_id, FromRec)
 		productData, morePages = parse_search_results(html_doc, productData)
 		FromRec += 100
-	#print("here")
 	print(len(productData))
+
 	return productData
+

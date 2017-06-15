@@ -15,7 +15,7 @@ if __name__ == "__main__":
     try:
         grantees = parse_grantees()
     except FileNotFoundError:
-        print("No local xml file found.")
+        print("No local xml file found")
         print("Use '--help' for help")
         print("Downloading grantee data...")
         fetch_grantees_xml()

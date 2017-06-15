@@ -1,5 +1,5 @@
 import sqlite3
-from pyFCC.archive import parse_fccid
+from pyFCC.archive import parse_fcc_id
 
 # creates a sqlite database for use with grantee data
 def create_grantee_table():
@@ -35,33 +35,31 @@ def create_product_table():
                 high_freq text,
                 low_freq text,
                 version text,
-                UNIQUE(grantee_code, product_code, version))''')   #version doesn't currently have anything
+                UNIQUE(grantee_code, product_code, version))''')
     conn.commit()
     c.close()
     print("Product table created in FCC.db")
 
 # populates an existing database table with grantee data
-def populate_grantees(granteeTest):
+def populate_grantees(grantee_test):
     conn = sqlite3.connect('FCC.db')
     c = conn.cursor()
-    c.executemany('INSERT INTO grantees VALUES (?,?,?,?,?,?,?,?,?,?)', granteeTest)
+    c.executemany('INSERT INTO grantees VALUES (?,?,?,?,?,?,?,?,?,?)', grantee_test)
     conn.commit()
     c.close()
     print("Grantee Table populated in FCC.db")
 
 # populates an existing database table with product data
-def populate_products(productsTest):
-    productList = []
-    for key, value in productsTest.items():
-            for version, row in enumerate(value, 1):
-                detail_url, ID, low, high = row
-                appid, productid = parse_fccid(ID)
-                row = (appid, productid, detail_url, high, low, version)
-                productList.append(row)
+def populate_products(product_test):
+    product_list = []
+    for key, value in product_test.items():
+            for row in value:
+                dbValues = (row['grantee_code'], row['product_code'], row['url'], row['low_freq'], row['high_freq'], row['version'])
+                product_list.append(dbValues)
 
     conn = sqlite3.connect('FCC.db')
     c = conn.cursor()
-    c.executemany('INSERT OR IGNORE INTO products VALUES (?,?,?,?,?,?)', productList)
+    c.executemany('INSERT OR IGNORE INTO products VALUES (?,?,?,?,?,?)', product_list)
     conn.commit()
     c.close()
     print("Product Table populated in FCC.db")
