@@ -142,7 +142,7 @@ def fetch_and_pack(attachments, dir_name, referer):
 		r = s.get(fcc_url + url, headers=dict(Referer=referer))
 
 		extension = r.headers['content-type'].split('/')[-1]
-		filename = name + '.' + extension
+		filename = name.replace('/', '_') + '.' + extension
 		print("Writing %s" % filename)
 		with open(dir_name + '/' + filename, 'wb') as handle:
 			for chunk in r.iter_content():
